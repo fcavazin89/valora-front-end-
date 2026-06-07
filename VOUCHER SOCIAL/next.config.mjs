@@ -1,11 +1,10 @@
-import withPWA from 'next-pwa'
+import withPWA from '@ducanh2912/next-pwa'
 
 const pwaConfig = withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  buildExcludes: [/middleware-manifest\.json$/],
   fallbacks: {
     document: '/offline',
   },
@@ -19,8 +18,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Necessário para Netlify + Next.js App Router
-  output: 'standalone',
+  // Necessário para silenciar aviso Turbopack/webpack no Next.js 16
+  turbopack: {},
   async headers() {
     return [
       {
@@ -31,7 +30,6 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          // Permite câmera para leitura de QR Code no PWA
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
         ],
       },

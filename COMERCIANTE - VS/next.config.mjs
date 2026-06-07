@@ -6,8 +6,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Necessário para Netlify + Next.js App Router
-  output: 'standalone',
   async headers() {
     return [
       {
