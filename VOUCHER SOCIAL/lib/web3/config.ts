@@ -1,17 +1,12 @@
 import { createPublicClient, http } from "viem"
-import { polygon, polygonAmoy } from "viem/chains"
+import { sepolia } from "viem/chains"
 
-export function getNetwork() {
-  const chainId = process.env.NEXT_PUBLIC_CHAIN_ID
-  if (chainId === "80002") return polygonAmoy
-  return polygon
-}
-
-export const NETWORK = getNetwork()
+// Rede unificada: Ethereum Sepolia (igual ao COMERCIANTE)
+export const NETWORK = sepolia
 
 export const VOUCHER_CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_VOUCHER_CONTRACT_ADDRESS ||
-    "0x1234567890123456789012345678901234567890") as `0x${string}`
+    "0x0000000000000000000000000000000000000000") as `0x${string}`
 
 export const publicClient = createPublicClient({
   chain: NETWORK,
@@ -52,7 +47,7 @@ export const VOUCHER_ABI = [
   },
 ] as const
 
-// IDs dos tokens de voucher
+// IDs dos tokens de voucher no contrato ERC-1155
 export const VOUCHER_TOKEN_IDS = {
   alimentacao: 1n,
   gas: 2n,

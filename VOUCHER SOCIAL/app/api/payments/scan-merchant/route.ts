@@ -1,10 +1,34 @@
 import { NextResponse } from "next/server"
 import { merchantRegistry } from "@/lib/web3/server/merchant-registry"
+import { comercioApi } from "@/lib/valora-api"
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    await new Promise((resolve) => setTimeout(resolve, 2200))
+    // Recebe endereço do comerciante escaneado no QR (opcional no modo demo)
+    const body = await request.json().catch(() => ({}))
+    const { merchantAddress } = body
 
+    // Se vier endereço do QR, verifica na valora-api se é credenciado
+    if (merchantAddress) {
+      try {
+        const comercio = await comercioApi.getByWallet(merchantAddress)
+        if (comercio) {
+          return NextResponse.json({
+            merchantName: comercio.nome_fantasia || comercio.razao_social,
+            merchantAddress: comercio.wallet_address || merchantAddress,
+            amount: body.amount || "R$ 0,00",
+            voucherType: body.voucherType || "alimentacao",
+            verified: true,
+            source: "valora-api",
+          })
+        }
+      } catch {
+        // valora-api indisponível, continua com fallback
+      }
+    }
+
+    // Fallback: modo demo com comerciantes do registry local
+    await new Promise((resolve) => setTimeout(resolve, 1200))
     const merchant = merchantRegistry.getRandomMerchant()
 
     const amountOptions = [
@@ -25,6 +49,7 @@ export async function POST() {
       amountValue: picked.amount,
       voucherType: picked.voucherType,
       verified: merchant.verified,
+      source: "demo",
     })
   } catch (error: any) {
     console.error("[API] Erro ao escanear QR:", error)
