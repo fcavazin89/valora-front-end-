@@ -3,6 +3,7 @@
   "devCommand": "pnpm run dev",
   "installCommand": "pnpm install",
   "framework": "nextjs",
+  "nodeVersion": "22.x",
   "headers": [
     {
       "source": "/:path*",
