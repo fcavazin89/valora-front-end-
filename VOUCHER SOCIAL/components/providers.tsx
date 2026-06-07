@@ -23,15 +23,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
-  const inner = (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+  // Sem Web3Auth configurado ou antes de montar: só QueryClient
+  if (!mounted || !web3AuthContextConfig) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    )
+  }
 
-  if (!mounted || !web3AuthContextConfig) return inner
-
+  // Com Web3Auth: QueryClient > Web3Auth > Wagmi
   return (
-    <Web3AuthProvider config={web3AuthContextConfig}>
-      <WagmiProvider>{inner}</WagmiProvider>
-    </Web3AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <Web3AuthProvider config={web3AuthContextConfig}>
+        <WagmiProvider>
+          {children}
+        </WagmiProvider>
+      </Web3AuthProvider>
+    </QueryClientProvider>
   )
 }
