@@ -3,10 +3,9 @@
   "devCommand": "pnpm run dev",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "outputDirectory": ".next",
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "headers": [
         {
           "key": "Permissions-Policy",
@@ -44,7 +43,7 @@
       ]
     },
     {
-      "source": "/workbox-(.*).js",
+      "source": "/workbox-:hash.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -66,7 +65,7 @@
       ]
     },
     {
-      "source": "/_next/static/(.*)",
+      "source": "/_next/static/:path*",
       "headers": [
         {
           "key": "Cache-Control",
@@ -75,7 +74,7 @@
       ]
     },
     {
-      "source": "/icons/(.*)",
+      "source": "/icons/:path*",
       "headers": [
         {
           "key": "Cache-Control",
