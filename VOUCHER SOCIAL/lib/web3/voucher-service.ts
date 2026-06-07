@@ -220,6 +220,46 @@ export class VoucherService {
       return true
     }
   }
+
+  /** Notifica a API do comerciante que o QR foi lido pelo beneficiário */
+  async notifyQRScanned(chargeId: string, apiUrl?: string): Promise<void> {
+    const url = apiUrl || `${getBaseUrl()}/api/charges/approve`
+    // Só notifica, não aguarda resultado — o comerciante faz polling
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chargeId, scannedAt: new Date().toISOString() }),
+    }).catch(() => {})
+  }
+
+  /** Parseia o texto bruto de um QR Code e retorna os dados do comerciante */
+  async parseMerchantQR(rawQR: string): Promise<{
+    merchantName: string
+    merchantAddress: `0x${string}`
+    amount: string
+    voucherType: VoucherType
+    verified: boolean
+  }> {
+    try {
+      // Tenta reconhecer via API de scan passando o payload lido
+      const data = await apiFetch<{
+        merchantName: string
+        merchantAddress: `0x${string}`
+        amount: string
+        voucherType: VoucherType
+        verified: boolean
+      }>("/payments/scan-merchant", {
+        method: "POST",
+        body: JSON.stringify({ rawQR }),
+      })
+      return {
+        ...data,
+        amount: data.amount.startsWith("R$") ? data.amount : `R$ ${data.amount}`,
+      }
+    } catch {
+      throw new Error("QR Code não reconhecido")
+    }
+  }
 }
 
 export const voucherService = new VoucherService()

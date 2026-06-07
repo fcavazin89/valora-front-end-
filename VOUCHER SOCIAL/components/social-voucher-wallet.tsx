@@ -13,21 +13,23 @@ import {
   Store,
   Flame,
   ShoppingBasket,
-  Eye,
-  EyeOff,
-  User,
-  Lock,
-  CheckCircle2,
   ScanLine,
+  CheckCircle2,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { useWallet, useVoucherBalance, useQRScanner } from "@/hooks/use-web3"
 import { useWeb3AuthConnect } from "@web3auth/modal/react"
+import dynamic from "next/dynamic"
+
+// Carrega o scanner de câmera apenas no browser (usa APIs de câmera)
+const QrCameraScanner = dynamic(
+  () => import("@/components/qr-camera-scanner").then((m) => m.QrCameraScanner),
+  { ssr: false }
+)
 
 type View = "login" | "home" | "detail" | "payment"
 type VoucherId = "alimentacao" | "gas"
@@ -514,17 +516,14 @@ function PaymentView({
   refreshKey: number
   onBack: () => void
 }) {
-  // Hook Web3 para escanear o QR Code do comerciante
-  const { status, scanned, transactionHash, startScan, confirmPayment, reset } = useQRScanner()
+  const { status, scanned, transactionHash, startScan, handleQRResult, confirmPayment, reset } = useQRScanner()
 
-  // Reinicia o scanner ao entrar na tela
   useEffect(() => {
     reset()
   }, [refreshKey, reset])
 
   return (
     <div className="flex min-h-screen flex-col bg-orange-50">
-      {/* Header */}
       <header className="sticky top-0 z-40 border-b border-orange-100 bg-orange-50/95 px-4 py-3 backdrop-blur-lg">
         <div className="flex items-center gap-3">
           <button
@@ -534,73 +533,63 @@ function PaymentView({
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">
-            Escanear para Pagar
-          </h1>
+          <h1 className="text-lg font-semibold text-gray-900">Escanear para Pagar</h1>
         </div>
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center px-5 py-8">
-        {/* IDLE / SCANNING: Camera Scanner */}
-        {(status === "idle" || status === "scanning") && (
+
+        {/* IDLE — botão para iniciar câmera */}
+        {status === "idle" && (
           <Card className="w-full max-w-sm border-0 bg-white shadow-xl">
-            <CardContent className="p-6">
-              <div className="mb-5 text-center">
-                <h2 className="mb-1 text-lg font-semibold text-gray-900">
-                  Aponte para o QR Code
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Escaneie o codigo exibido no caixa do comercio
-                </p>
+            <CardContent className="p-6 text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-orange-100">
+                <QrCode className="h-10 w-10 text-orange-600" />
               </div>
-
-              {/* Scanner Viewport */}
-              <div className="relative mx-auto mb-5 flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-gray-900">
-                {/* Corner frames */}
-                <div className="absolute left-4 top-4 h-10 w-10 rounded-tl-2xl border-l-4 border-t-4 border-orange-400" />
-                <div className="absolute right-4 top-4 h-10 w-10 rounded-tr-2xl border-r-4 border-t-4 border-orange-400" />
-                <div className="absolute bottom-4 left-4 h-10 w-10 rounded-bl-2xl border-b-4 border-l-4 border-orange-400" />
-                <div className="absolute bottom-4 right-4 h-10 w-10 rounded-br-2xl border-b-4 border-r-4 border-orange-400" />
-
-                {status === "scanning" ? (
-                  <>
-                    {/* Animated scan line */}
-                    <div className="absolute left-6 right-6 h-0.5 animate-bounce bg-orange-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.8)]" />
-                    <div className="flex flex-col items-center gap-2 text-orange-300">
-                      <ScanLine className="h-10 w-10 animate-pulse" />
-                      <p className="text-sm font-medium">Lendo codigo...</p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-gray-400">
-                    <QrCode className="h-12 w-12" />
-                    <p className="text-sm">Camera pronta</p>
-                  </div>
-                )}
-              </div>
-
+              <h2 className="mb-2 text-lg font-semibold text-gray-900">Pronto para pagar</h2>
+              <p className="mb-6 text-sm text-gray-500">
+                Aponte a câmera para o QR Code exibido no caixa do estabelecimento.
+              </p>
               <Button
                 onClick={startScan}
-                disabled={status === "scanning"}
-                className="h-14 w-full rounded-2xl bg-orange-600 text-base font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:bg-orange-700 disabled:opacity-60"
+                className="h-14 w-full rounded-2xl bg-orange-600 text-base font-semibold text-white shadow-lg shadow-orange-200 hover:bg-orange-700"
               >
-                {status === "scanning" ? (
-                  <span className="flex items-center gap-2">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Escaneando...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <ScanLine className="h-5 w-5" />
-                    Iniciar Leitura
-                  </span>
-                )}
+                <ScanLine className="mr-2 h-5 w-5" />
+                Abrir Câmera
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* REVIEW: Confirm payment details */}
+        {/* SCANNING — câmera ativa */}
+        {status === "scanning" && (
+          <Card className="w-full max-w-sm border-0 bg-white shadow-xl">
+            <CardContent className="p-6">
+              <div className="mb-4 text-center">
+                <h2 className="mb-1 text-lg font-semibold text-gray-900">Aponte para o QR Code</h2>
+                <p className="text-sm text-gray-500">Escaneie o código exibido no caixa do comércio</p>
+              </div>
+
+              <div className="mx-auto mb-5 flex justify-center">
+                <QrCameraScanner
+                  active={status === "scanning"}
+                  onScan={handleQRResult}
+                  onError={() => reset()}
+                />
+              </div>
+
+              <Button
+                onClick={reset}
+                variant="outline"
+                className="h-12 w-full rounded-2xl border-gray-200 text-gray-500"
+              >
+                Cancelar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* REVIEW — confirmar pagamento */}
         {status === "review" && scanned && (
           <Card className="w-full max-w-sm border-0 bg-white shadow-xl">
             <CardContent className="p-6">
@@ -608,24 +597,20 @@ function PaymentView({
                 <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-100">
                   <Store className="h-7 w-7 text-orange-600" />
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {scanned.merchantName}
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900">{scanned.merchantName}</h2>
                 {scanned.verified && (
                   <div className="mt-1 flex items-center justify-center gap-1 text-sm text-orange-600">
                     <BadgeCheck className="h-4 w-4" />
-                    <span>Comercio credenciado</span>
+                    <span>Comércio credenciado</span>
                   </div>
                 )}
               </div>
 
-              {/* Amount */}
               <div className="mb-5 rounded-2xl bg-orange-50 p-5 text-center">
                 <p className="mb-1 text-sm text-gray-500">Valor a pagar</p>
                 <p className="text-4xl font-bold text-orange-600">{scanned.amount}</p>
               </div>
 
-              {/* Voucher used */}
               <div className="mb-5 flex items-center justify-between rounded-xl border border-gray-100 p-3">
                 <span className="text-sm text-gray-500">Pagar com</span>
                 <Badge
@@ -639,15 +624,11 @@ function PaymentView({
               <div className="flex flex-col gap-2">
                 <Button
                   onClick={confirmPayment}
-                  className="h-14 w-full rounded-2xl bg-orange-600 text-base font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:bg-orange-700"
+                  className="h-14 w-full rounded-2xl bg-orange-600 text-base font-semibold text-white shadow-lg shadow-orange-200 hover:bg-orange-700"
                 >
                   Confirmar Pagamento
                 </Button>
-                <Button
-                  onClick={reset}
-                  variant="ghost"
-                  className="h-12 w-full rounded-2xl text-gray-500 hover:bg-gray-50"
-                >
+                <Button onClick={reset} variant="ghost" className="h-12 w-full rounded-2xl text-gray-500 hover:bg-gray-50">
                   Cancelar
                 </Button>
               </div>
@@ -660,11 +641,9 @@ function PaymentView({
           <Card className="w-full max-w-sm border-0 bg-white shadow-xl">
             <CardContent className="flex flex-col items-center gap-4 p-10">
               <div className="h-14 w-14 animate-spin rounded-full border-4 border-orange-200 border-t-orange-600" />
-              <p className="text-base font-medium text-gray-900">
-                Processando pagamento...
-              </p>
+              <p className="text-base font-medium text-gray-900">Processando pagamento...</p>
               <p className="text-center text-sm text-gray-500">
-                Aguarde enquanto confirmamos a transacao com seguranca.
+                Aguarde enquanto confirmamos a transação com segurança.
               </p>
             </CardContent>
           </Card>
@@ -677,16 +656,14 @@ function PaymentView({
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
                 <CheckCircle2 className="h-9 w-9 text-orange-600" />
               </div>
-              <h2 className="mb-1 text-xl font-bold text-gray-900">
-                Pagamento aprovado!
-              </h2>
+              <h2 className="mb-1 text-xl font-bold text-gray-900">Pagamento aprovado!</h2>
               <p className="mb-5 text-sm text-gray-500">
                 {scanned.amount} pagos para {scanned.merchantName}
               </p>
 
               {transactionHash && (
                 <div className="mb-5 w-full rounded-xl bg-gray-50 p-3">
-                  <p className="mb-1 text-xs text-gray-400">Comprovante</p>
+                  <p className="mb-1 text-xs text-gray-400">Comprovante blockchain</p>
                   <p className="break-all font-mono text-xs text-gray-600">
                     {transactionHash.slice(0, 22)}...
                   </p>
@@ -696,23 +673,19 @@ function PaymentView({
               <div className="flex w-full flex-col gap-2">
                 <Button
                   onClick={reset}
-                  className="h-14 w-full rounded-2xl bg-orange-600 text-base font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:bg-orange-700"
+                  className="h-14 w-full rounded-2xl bg-orange-600 text-base font-semibold text-white shadow-lg shadow-orange-200 hover:bg-orange-700"
                 >
                   Novo Pagamento
                 </Button>
-                <Button
-                  onClick={onBack}
-                  variant="ghost"
-                  className="h-12 w-full rounded-2xl text-gray-500 hover:bg-gray-50"
-                >
-                  Voltar ao Inicio
+                <Button onClick={onBack} variant="ghost" className="h-12 w-full rounded-2xl text-gray-500 hover:bg-gray-50">
+                  Voltar ao Início
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Security Note - hidden during success */}
+        {/* Badge de segurança */}
         {status !== "success" && (
           <Card className="mt-4 w-full max-w-sm border-orange-200 bg-orange-50">
             <CardContent className="flex items-start gap-3 p-4">
@@ -720,11 +693,9 @@ function PaymentView({
                 <Shield className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-orange-800">
-                  Pagamento Seguro
-                </p>
+                <p className="text-sm font-medium text-orange-800">Pagamento Seguro</p>
                 <p className="text-xs text-orange-700">
-                  Confira sempre o nome do comercio e o valor antes de confirmar.
+                  Confira sempre o nome do comércio e o valor antes de confirmar.
                 </p>
               </div>
             </CardContent>

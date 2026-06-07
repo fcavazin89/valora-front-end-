@@ -166,32 +166,72 @@ interface UseQRScannerReturn {
   status: ScannerStatus
   scanned: ScannedPayment | null
   transactionHash: string | null
-  startScan: () => Promise<void>
+  startScan: () => void
+  handleQRResult: (rawQR: string) => Promise<void>
   confirmPayment: () => Promise<void>
   reset: () => void
 }
 
 /**
- * Hook para escanear o QR Code exibido pelo comerciante.
- * O fluxo: escanear -> revisar valor -> confirmar -> sucesso.
- * Toda a complexidade Web3 (transferência de tokens) fica escondida.
+ * Hook para escanear o QR Code exibido pelo comerciante via câmera real.
+ * Fluxo: câmera ativa → lê QR → revisa valor → confirma → sucesso.
  */
 export function useQRScanner(): UseQRScannerReturn {
   const [status, setStatus] = useState<ScannerStatus>("idle")
   const [scanned, setScanned] = useState<ScannedPayment | null>(null)
   const [transactionHash, setTransactionHash] = useState<string | null>(null)
 
-  const startScan = useCallback(async () => {
+  // Ativa a câmera
+  const startScan = useCallback(() => {
     setStatus("scanning")
     setScanned(null)
     setTransactionHash(null)
+  }, [])
+
+  // Recebe o texto lido pelo QrCameraScanner e processa
+  const handleQRResult = useCallback(async (rawQR: string) => {
     try {
-      const result = await voucherService.scanMerchantQR()
-      setScanned(result)
+      // Tenta parsear o payload JSON do QR do comerciante
+      const payload = JSON.parse(rawQR)
+
+      if (payload?.type === "VOUCHER_CHARGE" || payload?.chargeId) {
+        // QR gerado pelo COMERCIANTE - VS
+        const result: ScannedPayment = {
+          merchantName: payload.merchantName ?? "Comerciante",
+          merchantAddress: (payload.merchantAddress ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+          amount: payload.amount
+            ? `R$ ${Number(payload.amount).toFixed(2).replace(".", ",")}`
+            : "R$ 0,00",
+          voucherType: "alimentacao",
+          verified: true,
+        }
+
+        // Notifica a API do comerciante que o QR foi lido
+        try {
+          await voucherService.notifyQRScanned(payload.chargeId, payload.apiUrl)
+        } catch {
+          // silent — não bloqueia o fluxo
+        }
+
+        setScanned(result)
+        setStatus("review")
+        return
+      }
+
+      // QR genérico — passa para a API de scan
+      const data = await voucherService.parseMerchantQR(rawQR)
+      setScanned(data)
       setStatus("review")
-    } catch (error) {
-      console.error("[v0] Erro ao escanear QR:", error)
-      setStatus("idle") // volta para idle em vez de ficar travado em scanning
+    } catch {
+      // QR não reconhecido — tenta via API
+      try {
+        const data = await voucherService.parseMerchantQR(rawQR)
+        setScanned(data)
+        setStatus("review")
+      } catch (error) {
+        console.error("[useQRScanner] QR inválido:", error)
+        setStatus("idle")
+      }
     }
   }, [])
 
@@ -228,6 +268,7 @@ export function useQRScanner(): UseQRScannerReturn {
     scanned,
     transactionHash,
     startScan,
+    handleQRResult,
     confirmPayment,
     reset,
   }
