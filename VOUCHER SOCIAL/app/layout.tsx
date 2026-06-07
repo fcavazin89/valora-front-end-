@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import { Providers } from '@/components/providers'
+import dynamic from 'next/dynamic'
 import './globals.css'
 
 const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
+
+// Providers carregado apenas no browser — evita Web3Auth rodar durante SSR/prerender
+const Providers = dynamic(
+  () => import('@/components/providers').then((mod) => mod.Providers),
+  { ssr: false }
+)
 
 export const viewport: Viewport = {
   themeColor: '#059669',
