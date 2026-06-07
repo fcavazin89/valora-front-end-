@@ -11,7 +11,8 @@ export async function POST(request: Request) {
     // Se vier endereço do QR, verifica na valora-api se é credenciado
     if (merchantAddress) {
       try {
-        const comercio = await comercioApi.getByWallet(merchantAddress)
+        const data = await comercioApi.getAll(`wallet_address=${merchantAddress}`)
+        const comercio = data?.data?.[0] ?? data?.[0] ?? null
         if (comercio) {
           return NextResponse.json({
             merchantName: comercio.nome_fantasia || comercio.razao_social,
