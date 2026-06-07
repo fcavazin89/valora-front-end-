@@ -13,3 +13,8 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# Development logs
+*.log
+dev-server.log
+dev-server-err.log
