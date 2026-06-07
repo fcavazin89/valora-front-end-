@@ -4,7 +4,10 @@ const pwaConfig = withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
+  disable: false,
+  reloadOnOnline: true,
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
   fallbacks: {
     document: '/offline',
   },
@@ -18,7 +21,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Necessário para silenciar aviso Turbopack/webpack no Next.js 16
+  // Turbopack config
   turbopack: {},
   async headers() {
     return [
